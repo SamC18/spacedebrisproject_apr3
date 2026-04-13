@@ -1,5 +1,7 @@
 from dashboard import get_dashboard_data
 from kessler import run_cascade_simulation
+from conjunction import find_conjunctions, CATALOG_GROUPS
+from maneuver import optimize_avoidance_maneuver
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -193,3 +195,57 @@ def kessler_endpoint(payload: dict):
         mission_years = float(payload.get("mission_years", 5))
     )
     return run_cascade_simulation(calc)
+
+# ─────────────────────────────────────────────
+# Sprint 2 — Live Conjunction Detection
+# ─────────────────────────────────────────────
+
+@app.get("/conjunctions")
+def conjunctions_endpoint(
+    norad_id:      int   = 25544,
+    hours:         float = 24.0,
+    threshold_km:  float = 10.0,
+    catalog_group: str   = "visual",
+):
+    """
+    Detect upcoming conjunction events for a satellite.
+
+    Query params:
+      norad_id      — NORAD catalog ID of the satellite (default: 25544 = ISS)
+      hours         — look-ahead window in hours (max 72, default 24)
+      threshold_km  — flag events closer than this in km (default 10)
+      catalog_group — which Celestrak group to check against:
+                      visual | stations | cosmos-debris | fengyun-debris |
+                      iridium-debris | active
+    """
+    if hours > 72:
+        hours = 72.0
+    if threshold_km <= 0:
+        threshold_km = 1.0
+
+    result = find_conjunctions(
+        norad_id=norad_id,
+        hours=hours,
+        threshold_km=threshold_km,
+        catalog_group=catalog_group,
+    )
+    return result
+
+
+@app.get("/conjunction-catalogs")
+def catalog_list():
+    """Returns the available catalog group names."""
+    return {"available_groups": list(CATALOG_GROUPS.keys())}
+# ── Sprint 3: Maneuver Optimizer ──────────────────────────────────────────────
+@app.post("/maneuver")
+def maneuver_endpoint(payload: dict):
+    return optimize_avoidance_maneuver(
+        altitude_km        = float(payload.get("altitude_km", 550)),
+        inclination_deg    = float(payload.get("inclination_deg", 53)),
+        spacecraft_mass_kg = float(payload.get("spacecraft_mass_kg", 500)),
+        miss_distance_km   = float(payload.get("miss_distance_km", 2.5)),
+        minutes_to_tca     = float(payload.get("minutes_to_tca", 90)),
+        object_name        = str(payload.get("object_name", "Unknown")),
+        target_miss_km     = float(payload.get("target_miss_km", 5.0)),
+        isp_s              = float(payload.get("isp_s", 220)),
+    )

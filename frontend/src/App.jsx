@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
+import ConjunctionCard from './ConjunctionCard.jsx';
+import ManeuverPanel from './ManeuverPanel.jsx';
 
 const API_BASE = `http://${window.location.hostname}:8000`;
 
@@ -353,10 +355,14 @@ export default function App() {
         <div style={{ display: 'flex', gap: 12, marginBottom: 30, justifyContent: 'center' }}>
           {tabBtn('analyzer',  'Analyzer')}
           {tabBtn('dashboard', 'Live Dashboard')}
+          {tabBtn('conjunctions', 'Conjunctions')}
+          {tabBtn('maneuver', 'Maneuver Optimizer')}
         </div>
 
         {tab === 'analyzer'  && <Analyzer />}
         {tab === 'dashboard' && <Dashboard />}
+        {tab === 'conjunctions' && <ConjunctionCard />}
+        {tab === 'maneuver' && <ManeuverPanel />}
       </div>
     </div>
   );
