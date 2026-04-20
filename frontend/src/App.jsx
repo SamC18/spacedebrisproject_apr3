@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
 import ConjunctionCard from './ConjunctionCard.jsx';
 import ManeuverPanel from './ManeuverPanel.jsx';
+import ValidationPanel from './ValidationPanel.jsx';
 
 const API_BASE = `http://${window.location.hostname}:8000`;
 
@@ -357,12 +358,14 @@ export default function App() {
           {tabBtn('dashboard', 'Live Dashboard')}
           {tabBtn('conjunctions', 'Conjunctions')}
           {tabBtn('maneuver', 'Maneuver Optimizer')}
+          {tabBtn('validation', 'Validation')}
         </div>
 
         {tab === 'analyzer'  && <Analyzer />}
         {tab === 'dashboard' && <Dashboard />}
         {tab === 'conjunctions' && <ConjunctionCard />}
         {tab === 'maneuver' && <ManeuverPanel />}
+        {tab === 'validation' && <ValidationPanel />}
       </div>
     </div>
   );

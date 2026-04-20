@@ -42,30 +42,30 @@ class RiskCalculator:
 
         # Solar activity scaling
         # Higher F10.7 = denser upper atmosphere = faster decay
-        solar_factor = 1.0 + (f107 - 70.0) / 100.0 * 2.0
-        solar_factor = max(0.5, min(solar_factor, 5.0))
+        solar_factor = 1.0 + (f107 - 70.0) / 100.0 * 0.8
+        solar_factor = max(0.5, min(solar_factor, 2.5))
 
         # Altitude-dependent decay coefficient
         # Calibrated against real historical reentries:
         # UARS (585km, 10yr), ROSAT (560km, 10.5yr), Tiangong-1 (380km, 6.5yr)
         if self.altitude < 200:
-            k = 3000.0
+            k = 1200.0
         elif self.altitude < 300:
-            k = 850.0
+            k = 320.0
         elif self.altitude < 400:
-            k = 137.0
+            k = 220.0
         elif self.altitude < 500:
-            k = 85.0
+            k = 130.0
         elif self.altitude < 600:
-            k = 54.0
+            k = 88.0
         elif self.altitude < 700:
-            k = 15.0
+            k = 22.0
         elif self.altitude < 800:
-            k = 4.0
+            k = 6.5
         elif self.altitude < 900:
-            k = 1.0
+            k = 1.8
         else:
-            k = 0.3
+            k = 0.5
 
         effective_coeff = k * solar_factor
         decay_years = self.altitude / (effective_coeff * self.area_to_mass / 0.01)
