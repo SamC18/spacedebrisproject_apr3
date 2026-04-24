@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
 import ConjunctionCard from './ConjunctionCard.jsx';
 import ManeuverPanel from './ManeuverPanel.jsx';
+import KesslerPanel from './KesslerPanel.jsx';
 import ValidationPanel from './ValidationPanel.jsx';
 
 const API_BASE = `http://${window.location.hostname}:8000`;
@@ -359,6 +360,7 @@ export default function App() {
           {tabBtn('conjunctions', 'Conjunctions')}
           {tabBtn('maneuver', 'Maneuver Optimizer')}
           {tabBtn('validation', 'Validation')}
+          {tabBtn('kessler', 'Kessler Cascade')}
         </div>
 
         {tab === 'analyzer'  && <Analyzer />}
@@ -366,6 +368,7 @@ export default function App() {
         {tab === 'conjunctions' && <ConjunctionCard />}
         {tab === 'maneuver' && <ManeuverPanel />}
         {tab === 'validation' && <ValidationPanel />}
+        {tab === 'kessler' && <KesslerPanel />}
       </div>
     </div>
   );
