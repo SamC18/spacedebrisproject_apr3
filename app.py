@@ -174,9 +174,6 @@ def get_tle(norad_id: int):
         raise HTTPException(500, str(e))
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 
@@ -249,3 +246,8 @@ def maneuver_endpoint(payload: dict):
         target_miss_km     = float(payload.get("target_miss_km", 5.0)),
         isp_s              = float(payload.get("isp_s", 220)),
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
