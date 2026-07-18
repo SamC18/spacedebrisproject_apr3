@@ -44,8 +44,12 @@ function Analyzer() {
       }
       setResult(analysisResult);
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Analysis failed');
-    } finally {
+  const detail = err.response?.data?.detail;
+  const message = Array.isArray(detail)
+    ? detail.map(d => d.msg).join(', ')
+    : detail || err.message || 'Analysis failed';
+  setError(message);
+} finally {
       setLoading(false);
     }
   };
