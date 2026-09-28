@@ -49,7 +49,7 @@ export default function ValidationPanel() {
     <div>
       <div style={card}>
         <h2 style={{ color: '#fff', margin: '0 0 8px', fontSize: 22 }}>Model Validation — Predictions vs Reality</h2>
-        <p style={{ color: '#94a3b8', fontSize: 14, margin: '0 0 20px' }}>We test our decay model against 5 real satellites with known reentry dates — proving our physics engine produces accurate real-world predictions.</p>
+        <p style={{ color: '#94a3b8', fontSize: 14, margin: '0 0 20px' }}>We check our decay model against real satellites with known reentry dates. The model was calibrated on these reentries, so this shows it fits real data, not independent proof.</p>
         <button onClick={runValidation} disabled={loading} style={{ padding: '12px 32px', borderRadius: 12, border: 'none', background: loading ? '#475569' : 'linear-gradient(135deg,#06b6d4,#3b82f6)', color: '#fff', fontWeight: 700, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer' }}>
           {loading ? `Running... (${progress} / ${HISTORICAL_SATELLITES.length})` : 'Run Validation'}
         </button>
@@ -125,7 +125,7 @@ export default function ValidationPanel() {
       {!results && !loading && (
         <div style={{ ...card, textAlign: 'center', padding: 48 }}>
           <p style={{ fontSize: 40, margin: 0 }}>📡</p>
-          <p style={{ color: '#94a3b8', fontSize: 15, margin: '16px 0 0' }}>Click Run Validation to test our decay model against<br />5 real satellites with known reentry dates.</p>
+          <p style={{ color: '#94a3b8', fontSize: 15, margin: '16px 0 0' }}>Click Run Validation to test our decay model against<br />4 real reentries (plus Envisat, still in orbit).</p>
         </div>
       )}
     </div>
