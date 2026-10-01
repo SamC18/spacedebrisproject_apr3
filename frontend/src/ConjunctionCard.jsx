@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = `http://${window.location.hostname}:8000`;
+const API_BASE = '/api';
 
 const SEVERITY_COLORS = {
   CRITICAL: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', badge: '#ef4444' },
