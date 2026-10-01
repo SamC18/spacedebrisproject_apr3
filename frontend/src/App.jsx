@@ -6,7 +6,7 @@ import ManeuverPanel from './ManeuverPanel.jsx';
 import KesslerPanel from './KesslerPanel.jsx';
 import ValidationPanel from './ValidationPanel.jsx';
 
-const API_BASE = `http://${window.location.hostname}:8000`;
+const API_BASE = '/api';
 
 function Analyzer() {
   const [form, setForm] = useState({
