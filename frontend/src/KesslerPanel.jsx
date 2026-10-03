@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
 
 const PRESETS = [
   { label: 'ISS',      mass: 420000, area: 2500, altitude: 408,  inclination: 51.6 },
