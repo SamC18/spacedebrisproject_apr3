@@ -6,7 +6,7 @@ import ManeuverPanel from './ManeuverPanel.jsx';
 import KesslerPanel from './KesslerPanel.jsx';
 import ValidationPanel from './ValidationPanel.jsx';
 
-const API_BASE = '/api';
+const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
 
 function Analyzer() {
   const [form, setForm] = useState({
