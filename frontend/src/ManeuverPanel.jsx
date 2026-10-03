@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
 
 const DIRECTION_INFO = {
   prograde:   { label: 'Prograde',   icon: '→', desc: 'Burns in direction of travel — raises orbit' },
