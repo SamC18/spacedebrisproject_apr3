@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
 
 const HISTORICAL_SATELLITES = [
   { name: "UARS", fullName: "Upper Atmosphere Research Satellite", agency: "NASA", altitude_km: 585, inclination: 57.0, mass: 5900, area: 20.0, actual_years: 10.0, actual_reentry: 2011, measured: 2001, description: "NASA climate research satellite" },
