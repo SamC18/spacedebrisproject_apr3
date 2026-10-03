@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
 
 const SEVERITY_COLORS = {
   CRITICAL: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', badge: '#ef4444' },
