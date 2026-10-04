@@ -50,6 +50,11 @@ export default function ConjunctionCard() {
         },
         timeout: 120000,
       });
+           if (res.data.error) {
+        setError(res.data.error);
+        setData(null);
+        return;
+      }
       setData(res.data);
       setElapsed(((Date.now() - t0) / 1000).toFixed(1));
     } catch (e) {
