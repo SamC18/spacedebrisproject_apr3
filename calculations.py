@@ -218,7 +218,7 @@ def fetch_tle_params(norad_id):
     altitude    = a_km - R_EARTH_KM
     return {'altitude': round(altitude, 1), 'inclination': round(inclination, 1)}
 
-
+ 
 def run_monte_carlo(mass, area, altitude, inclination, mission_years, runs=1000):
     """Monte Carlo simulation — jittered inputs, returns statistics."""
     probs = []
