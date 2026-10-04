@@ -1,12 +1,12 @@
 """
 conjunction.py — Sprint 2: Live Conjunction Detection
-
+ 
 Fetches real TLE data from Celestrak, propagates orbits using sgp4,
 and finds closest approach events (conjunctions) for a target satellite.
-
+ 
 Uses sgp4 >= 2.7 which correctly handles NORAD catalog IDs > 99,999
 (the catalog exceeded 99,999 objects in 2024 — legacy parsers break on these).
-
+ 
 Approach:
   1. Fetch TLE for the target satellite from Celestrak by NORAD ID
   2. Fetch a tracked-object catalog (a named group, e.g. LEO debris)
@@ -15,21 +15,23 @@ Approach:
   5. Record events where distance < threshold_km
   6. Keep the single closest-approach event per catalog object
   7. Return events sorted by miss distance (closest first)
-
+ 
 Performance note: on an e2-medium VM, propagating 500 objects × 144 steps
 (24 h at 10-min intervals) takes < 2 seconds using SatrecArray vectorisation.
 """
-
+ 
+import os
+import time
 import numpy as np
 import requests
 from sgp4.api import Satrec, SatrecArray, jday
 from datetime import datetime, timezone, timedelta
-
+ 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
+ 
 TIME_STEP_MIN = 10          # propagation step in minutes
 MAX_CATALOG_OBJECTS = 600   # cap to keep response fast on e2-medium
-
+ 
 # Celestrak TLE group URLs.
 # "visual"  ~200 bright/large objects — good fast demo
 # "stations"   ISS, CSS, etc.
@@ -44,22 +46,22 @@ CATALOG_GROUPS = {
     "fengyun-debris":    "https://celestrak.org/NORAD/elements/gp.php?GROUP=fengyun-1c-debris&FORMAT=tle",
     "iridium-debris":    "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=tle",
 }
-
+ 
 DEFAULT_GROUP = "visual"    # fast default for the API
-
+ 
 # Individual satellite lookup (returns 3-line TLE for one NORAD ID)
 CELESTRAK_QUERY_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle"
-
-
+ 
+ 
 # ── TLE Fetching ───────────────────────────────────────────────────────────────
-
+ 
 def fetch_tle_text(url: str, timeout: int = 10) -> str:
     """Download raw TLE text from a URL. Raises on HTTP error."""
     resp = requests.get(url, timeout=timeout)
     resp.raise_for_status()
     return resp.text
-
-
+ 
+ 
 def parse_tle_block(tle_text: str) -> list[dict]:
     """
     Parse a block of 3-line TLE text into a list of dicts.
@@ -92,51 +94,100 @@ def parse_tle_block(tle_text: str) -> list[dict]:
             continue
         i += 1
     return entries
-
-
+ 
+ 
+# ── Saved-snapshot fallback ───────────────────────────────────────────────────
+# If Celestrak cannot be reached (some cloud hosts are blocked), the scan falls
+# back to TLE files saved next to this file, named tle_<group>.tle
+# (for example tle_visual.tle, tle_active.tle). Live data is always tried first.
+ 
+SNAPSHOT_DIR = os.path.dirname(os.path.abspath(__file__))
+LIVE_TIMEOUT_SEC = 15
+LIVE_RETRY_AFTER_SEC = 600      # after a live failure, skip live attempts for 10 min
+ 
+_live_down_until = 0.0
+_sources_used = set()           # filled with "live" and/or "snapshot" during a scan
+ 
+ 
+def snapshot_path(group: str) -> str:
+    return os.path.join(SNAPSHOT_DIR, f"tle_{group}.tle")
+ 
+ 
+def get_group_entries(group: str) -> list[dict]:
+    """
+    Return parsed TLE entries for a catalog group.
+    Tries live Celestrak first; on any failure, uses the saved snapshot file.
+    Returns [] if neither is available.
+    """
+    global _live_down_until
+ 
+    if group in CATALOG_GROUPS and time.time() >= _live_down_until:
+        try:
+            text = fetch_tle_text(CATALOG_GROUPS[group], timeout=LIVE_TIMEOUT_SEC)
+            entries = parse_tle_block(text)
+            if not entries:
+                raise ValueError("response contained no TLE data")
+            _sources_used.add("live")
+            return entries
+        except Exception as e:
+            print(f"[Celestrak] Live fetch of '{group}' failed: {e}")
+            _live_down_until = time.time() + LIVE_RETRY_AFTER_SEC
+ 
+    path = snapshot_path(group)
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                entries = parse_tle_block(f.read())
+            if entries:
+                print(f"[Snapshot] Loaded {len(entries)} objects from {os.path.basename(path)}")
+                _sources_used.add("snapshot")
+                return entries
+        except Exception as e:
+            print(f"[Snapshot] Could not read {path}: {e}")
+    return []
+ 
+ 
+def tle_epoch_date(line1: str) -> str:
+    """Return the TLE epoch date (YYYY-MM-DD) from line 1, or 'unknown'."""
+    try:
+        yy = int(line1[18:20])
+        doy = float(line1[20:32])
+        year = 2000 + yy if yy < 57 else 1900 + yy
+        return (datetime(year, 1, 1) + timedelta(days=doy - 1)).strftime("%Y-%m-%d")
+    except Exception:
+        return "unknown"
+ 
+ 
 def fetch_target_tle(norad_id: int) -> dict | None:
     """
-    Find TLE for a single satellite by searching Celestrak group catalogs.
-    Searches small/fast groups first, falls back to larger ones.
-    Avoids the broken individual-query endpoint.
+    Find TLE for a single satellite by searching catalog groups
+    (live Celestrak first, saved snapshot as fallback).
     """
     norad_str = str(norad_id).zfill(5)
-
-    # Search order: small and fast first, large catalogs as fallback
-    search_order = ["stations", "visual", "active"]
-
-    for group in search_order:
-        url = CATALOG_GROUPS[group]
-        try:
-            text = fetch_tle_text(url, timeout=15)
-            entries = parse_tle_block(text)
-            for entry in entries:
-                if entry["line1"][2:7].strip() == norad_str:
-                    print(f"[Celestrak] Found NORAD {norad_id} ({entry['name'].strip()}) in group '{group}'")
-                    return entry
-            print(f"[Celestrak] NORAD {norad_id} not in '{group}', trying next...")
-        except Exception as e:
-            print(f"[Celestrak] Could not search group '{group}': {e}")
-            continue
-
-    print(f"[Celestrak] NORAD {norad_id} not found in any searched catalog group.")
+ 
+    for group in ["stations", "visual", "active"]:
+        entries = get_group_entries(group)
+        for entry in entries:
+            if entry["line1"][2:7].strip() == norad_str:
+                print(f"[TLE] Found NORAD {norad_id} ({entry['name'].strip()}) in group '{group}'")
+                return entry
+        print(f"[TLE] NORAD {norad_id} not in '{group}', trying next...")
+ 
+    print(f"[TLE] NORAD {norad_id} not found in any searched catalog group.")
     return None
-
+ 
+ 
 def fetch_catalog(group: str = DEFAULT_GROUP) -> list[dict]:
-    """Fetch a TLE catalog group from Celestrak."""
-    url = CATALOG_GROUPS.get(group, CATALOG_GROUPS[DEFAULT_GROUP])
-    try:
-        text = fetch_tle_text(url, timeout=15)
-        entries = parse_tle_block(text)
-        print(f"[Celestrak] Loaded {len(entries)} objects from group '{group}'")
-        return entries[:MAX_CATALOG_OBJECTS]
-    except Exception as e:
-        print(f"[Celestrak] Could not fetch catalog '{group}': {e}")
-        return []
-
-
+    """Fetch a TLE catalog group (live Celestrak first, saved snapshot as fallback)."""
+    if group not in CATALOG_GROUPS:
+        group = DEFAULT_GROUP
+    entries = get_group_entries(group)
+    print(f"[TLE] Loaded {len(entries)} objects from group '{group}'")
+    return entries[:MAX_CATALOG_OBJECTS]
+ 
+ 
 # ── Orbital Propagation ────────────────────────────────────────────────────────
-
+ 
 def build_satrec(tle: dict) -> Satrec | None:
     """Build an sgp4 Satrec from a TLE dict. Returns None if TLE is invalid."""
     try:
@@ -144,8 +195,8 @@ def build_satrec(tle: dict) -> Satrec | None:
         return sat
     except Exception:
         return None
-
-
+ 
+ 
 def eci_position(satrec: Satrec, dt: datetime) -> np.ndarray | None:
     """
     Propagate satrec to datetime dt and return ECI position in km as (3,) array.
@@ -157,8 +208,8 @@ def eci_position(satrec: Satrec, dt: datetime) -> np.ndarray | None:
     if e != 0:   # sgp4 error code; 0 = success
         return None
     return np.array(r)   # km in ECI frame
-
-
+ 
+ 
 def eci_positions_array(satrecs: list[Satrec], dt: datetime) -> np.ndarray:
     """
     Vectorised: propagate a list of Satrec objects to dt.
@@ -175,16 +226,16 @@ def eci_positions_array(satrecs: list[Satrec], dt: datetime) -> np.ndarray:
     failed = e[:, 0] != 0
     positions[failed] = np.nan
     return positions
-
-
+ 
+ 
 def altitude_from_eci(pos_km: np.ndarray) -> float:
     """Compute altitude above Earth's surface from ECI position vector."""
     R_EARTH_KM = 6378.137
     return float(np.linalg.norm(pos_km) - R_EARTH_KM)
-
-
+ 
+ 
 # ── Conjunction Detection ──────────────────────────────────────────────────────
-
+ 
 def find_conjunctions(
     norad_id: int,
     hours: float = 24.0,
@@ -193,31 +244,33 @@ def find_conjunctions(
 ) -> dict:
     """
     Main function: detect conjunctions for a target satellite.
-
+ 
     Args:
         norad_id:      NORAD catalog ID of the satellite to protect
         hours:         how many hours ahead to scan (max 72)
         threshold_km:  flag events closer than this (km)
         catalog_group: which Celestrak group to scan against
-
+ 
     Returns dict with:
         target: name, norad_id, altitude_km
         conjunctions: list sorted by miss_distance_km (closest first)
         scan_metadata: object counts, timing, data source
     """
+    _sources_used.clear()
     hours = min(float(hours), 72.0)      # cap at 72 hours
     threshold_km = float(threshold_km)
-
+ 
     # ── 1. Fetch target TLE ──────────────────────────────────────────────────
     target_tle = fetch_target_tle(norad_id)
     if target_tle is None:
         return {
             "error": f"Could not fetch TLE for NORAD ID {norad_id}. "
-                     "Check the ID is valid and Celestrak is reachable.",
+                     "Check the ID is valid and Celestrak is reachable. "
+                     "(No saved snapshot file was found either.)",
             "target": {"norad_id": norad_id},
             "conjunctions": [],
         }
-
+ 
     target_satrec = build_satrec(target_tle)
     if target_satrec is None:
         return {
@@ -225,27 +278,28 @@ def find_conjunctions(
             "target": {"norad_id": norad_id},
             "conjunctions": [],
         }
-
+ 
     # Get target's current altitude
     now = datetime.now(timezone.utc)
     target_pos_now = eci_position(target_satrec, now)
     target_altitude = altitude_from_eci(target_pos_now) if target_pos_now is not None else None
-
+ 
     # ── 2. Fetch catalog ─────────────────────────────────────────────────────
     catalog_entries = fetch_catalog(catalog_group)
     if not catalog_entries:
         return {
-            "error": f"Could not fetch catalog group '{catalog_group}'.",
+            "error": f"Could not fetch catalog group '{catalog_group}'. "
+                     f"Live feed unreachable and no saved snapshot (tle_{catalog_group}.tle) found.",
             "target": {"name": target_tle["name"], "norad_id": norad_id},
             "conjunctions": [],
         }
-
+ 
     # Remove the target itself from the catalog (avoid self-conjunction)
     catalog_entries = [
         e for e in catalog_entries
         if e["line1"][2:7].strip() != str(norad_id).zfill(5)
     ]
-
+ 
     # Build Satrec objects (skip invalid TLEs)
     catalog_satrecs = []
     catalog_names   = []
@@ -257,47 +311,47 @@ def find_conjunctions(
             catalog_names.append(entry["name"])
             # Extract NORAD ID from line 1 (chars 2-6)
             catalog_norad_ids.append(entry["line1"][2:7].strip())
-
+ 
     n_objects = len(catalog_satrecs)
     print(f"[Conjunction] Scanning {n_objects} objects over {hours:.0f} hours "
           f"(threshold {threshold_km} km)")
-
+ 
     # ── 3. Propagate and scan ────────────────────────────────────────────────
     n_steps = int(hours * 60 / TIME_STEP_MIN)
     time_steps = [now + timedelta(minutes=i * TIME_STEP_MIN) for i in range(n_steps)]
-
+ 
     # Track closest approach per catalog object: {index: (min_dist, time, target_pos, cat_pos)}
     best_approach: dict[int, tuple] = {}
-
+ 
     for dt in time_steps:
         # Propagate target
         t_pos = eci_position(target_satrec, dt)
         if t_pos is None:
             continue
-
+ 
         # Propagate all catalog objects (vectorised)
         cat_positions = eci_positions_array(catalog_satrecs, dt)   # (N, 3)
-
+ 
         # Compute distances
         diff = cat_positions - t_pos        # (N, 3)  broadcasting
         dists = np.linalg.norm(diff, axis=1)  # (N,)
-
+ 
         # Find objects below threshold
         close_mask = dists < threshold_km
         close_indices = np.where(close_mask)[0]
-
+ 
         for idx in close_indices:
             dist = float(dists[idx])
             if idx not in best_approach or dist < best_approach[idx][0]:
                 # Relative velocity (approximate): difference of velocities
                 # We'll compute a rough radial closing speed from position change
                 best_approach[idx] = (dist, dt, t_pos.copy(), cat_positions[idx].copy())
-
+ 
     # ── 4. Build results ─────────────────────────────────────────────────────
     conjunctions = []
     for idx, (miss_dist, tca_time, t_pos, c_pos) in best_approach.items():
         cat_alt = altitude_from_eci(c_pos) if not np.any(np.isnan(c_pos)) else None
-
+ 
         # Rough relative speed: use orbital speeds at these altitudes
         # v ≈ sqrt(GM/r), GM = 398600.4418 km³/s²
         GM = 398600.4418
@@ -313,10 +367,10 @@ def find_conjunctions(
             rel_speed_note = f"~{rel_speed:.0f} m/s (co-planar estimate)"
         else:
             rel_speed_note = f"~{rel_speed:.0f} m/s"
-
+ 
         # Time to closest approach from now
         minutes_until_tca = (tca_time - now).total_seconds() / 60
-
+ 
         # Severity label
         if miss_dist < 1.0:
             severity = "CRITICAL"
@@ -326,7 +380,7 @@ def find_conjunctions(
             severity = "MODERATE"
         else:
             severity = "LOW"
-
+ 
         conjunctions.append({
             "object_name":         catalog_names[idx].strip(),
             "object_norad_id":     catalog_norad_ids[idx],
@@ -337,10 +391,18 @@ def find_conjunctions(
             "relative_speed":      rel_speed_note,
             "severity":            severity,
         })
-
+ 
     # Sort by miss distance (closest first)
     conjunctions.sort(key=lambda x: x["miss_distance_km"])
-
+ 
+    if "snapshot" in _sources_used and "live" not in _sources_used:
+        data_source = (f"Saved Celestrak snapshot (TLE epoch {tle_epoch_date(target_tle['line1'])}) "
+                       "- live feed unreachable")
+    elif "snapshot" in _sources_used:
+        data_source = "Celestrak (live data, partly from saved snapshot)"
+    else:
+        data_source = "Celestrak (live TLE)"
+ 
     return {
         "target": {
             "name":        target_tle["name"].strip(),
@@ -356,17 +418,17 @@ def find_conjunctions(
             "time_step_min":      TIME_STEP_MIN,
             "scan_start_utc":     now.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "scan_end_utc":       (now + timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "data_source":        "Celestrak (live TLE)",
+            "data_source":        data_source,
             "sgp4_version":       ">=2.7 (5-digit NORAD ID compatible)",
         },
     }
-
-
+ 
+ 
 # ── Self-test ──────────────────────────────────────────────────────────────────
-
+ 
 if __name__ == "__main__":
     import json, time
-
+ 
     print("\n" + "="*60)
     print("CONJUNCTION DETECTION — Self Test")
     print("="*60)
@@ -374,7 +436,7 @@ if __name__ == "__main__":
     print("Catalog: visual (bright/large LEO objects ~200 objects)")
     print("Window: 24 hours, threshold: 10 km")
     print("-"*60)
-
+ 
     t0 = time.time()
     result = find_conjunctions(
         norad_id=25544,
@@ -383,7 +445,7 @@ if __name__ == "__main__":
         catalog_group="visual",
     )
     elapsed = time.time() - t0
-
+ 
     print(f"\nScan completed in {elapsed:.1f}s")
     if "error" in result:
         print(f"ERROR: {result['error']}")
@@ -391,7 +453,7 @@ if __name__ == "__main__":
         print(f"Target: {result['target']['name']} at {result['target']['altitude_km']} km")
     print(f"Objects scanned: {result['scan_metadata']['objects_scanned']}")
     print(f"Conjunctions found: {len(result['conjunctions'])}")
-
+ 
     if result["conjunctions"]:
         print("\nTop 5 closest approaches:")
         for c in result["conjunctions"][:5]:
@@ -401,6 +463,6 @@ if __name__ == "__main__":
     else:
         print("\nNo conjunctions found below threshold in this catalog.")
         print("Try increasing threshold_km or using catalog_group='active'.")
-
+ 
     print("\nFull JSON output:")
     print(json.dumps(result, indent=2))
