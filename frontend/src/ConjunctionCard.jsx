@@ -11,19 +11,12 @@ const SEVERITY_COLORS = {
 };
 
 const TRACKED_SATELLITES = [
-  { name: 'ISS',      norad_id: 25544 },
-  { name: 'Hubble',   norad_id: 20580 },
-  { name: 'Starlink', norad_id: 44713 },
-  { name: 'NOAA-20',  norad_id: 43013 },
+  { name: 'ISS',    norad_id: 25544 },
+  { name: 'Hubble', norad_id: 20580 },
 ];
 
 const CATALOG_OPTIONS = [
-  { value: 'visual',         label: 'Visual (fast ~150 objects)' },
-  { value: 'stations',       label: 'Space Stations' },
-  { value: 'cosmos-debris',  label: 'Cosmos-1408 Debris' },
-  { value: 'fengyun-debris', label: 'Fengyun-1C Debris' },
-  { value: 'iridium-debris', label: 'Iridium-33 Debris' },
-  { value: 'active',         label: 'All Active (slow)' },
+  { value: 'visual', label: 'Visual (fast ~150 objects)' },
 ];
 
 export default function ConjunctionCard() {
