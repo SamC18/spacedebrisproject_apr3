@@ -94,6 +94,8 @@ The decay model was checked against satellites whose reentry times are known (de
 
 **Honest note:** the drag coefficients were tuned using these same four satellites, so this is a calibration check, not an independent test. Envisat, which was not used for tuning, is predicted to last far longer than the others, as expected for its altitude. Testing on satellites not used for tuning is the next step.
 
+The table above uses default solar activity. The live app pulls current solar flux (F10.7) from NOAA, which makes the upper atmosphere denser or thinner, so predictions shift. With live data at the time of testing, the errors were about 13–14% (UARS 11.4 vs 10 yr, ROSAT 11.9 vs 10.5, Tiangong-1 7.4 vs 6.5, GOCE 4.9 vs 4.3), still within 20%. Both runs use the same model.
+
 ## Tech stack
 
 | Layer | Tools |
