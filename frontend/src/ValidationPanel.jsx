@@ -118,7 +118,7 @@ export default function ValidationPanel() {
       {results && (
         <div style={card}>
           <h3 style={{ color: '#fff', margin: '0 0 10px', fontSize: 15 }}>How this works</h3>
-          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0, lineHeight: 1.7 }}>Our model uses altitude-dependent atmospheric drag coefficients calibrated at a solar-maximum F10.7 of 150, scaled by the current F10.7 from NOAA SWPC when it can be reached. For each satellite we call our /v3/analyze API with orbital parameters from a known measurement date, then compare predicted decay against the actual reentry year. Envisat remains in orbit — our model correctly predicts a very long lifetime at 790 km altitude.</p>
+          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0, lineHeight: 1.7 }}>Our model uses altitude-dependent atmospheric drag coefficients calibrated to these reentries and scaled by solar activity (F10.7). For each satellite we call our /v3/analyze API with orbital parameters from a known measurement date, then compare predicted decay against the actual reentry year. Envisat remains in orbit — our model correctly predicts a very long lifetime at 790 km altitude.</p>
         </div>
       )}
 
