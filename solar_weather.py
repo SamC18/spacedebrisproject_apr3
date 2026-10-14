@@ -24,8 +24,12 @@ DEFAULT_KP   = 3.0
 
 # --- PART 1: Fetch the F10.7 solar flux ---
 
-def get_solar_flux_with_status():
-    """Returns (F10.7, is_live). is_live is False when the default was used."""
+def get_solar_flux():
+    """
+    Returns today's F10.7 solar radio flux from NOAA.
+    Higher number = more active Sun = more atmospheric drag on satellites.
+    Falls back to DEFAULT_F107 if NOAA is unreachable.
+    """
     try:
         url = "https://services.swpc.noaa.gov/products/summary/10cm-flux.json"
         # timeout=5 means give up after 5 seconds if no response
@@ -34,25 +38,20 @@ def get_solar_flux_with_status():
         data = response.json()
         flux = float(data["Flux"])
         print(f"[NOAA] Live F10.7 solar flux: {flux}")
-        return flux, True
+        return flux
     except Exception as e:
         print(f"[NOAA] Could not fetch F10.7 (using default {DEFAULT_F107}): {e}")
-        return DEFAULT_F107, False
-
-
-def get_solar_flux():
-    """
-    Returns today's F10.7 solar radio flux from NOAA.
-    Higher number = more active Sun = more atmospheric drag on satellites.
-    Falls back to DEFAULT_F107 if NOAA is unreachable.
-    """
-    return get_solar_flux_with_status()[0]
+        return DEFAULT_F107
 
 
 # --- PART 2: Fetch the Kp geomagnetic index ---
 
-def get_kp_index_with_status():
-    """Returns (Kp, is_live). is_live is False when the default was used."""
+def get_kp_index():
+    """
+    Returns the latest Kp index (0-9 scale) from NOAA.
+    High Kp = geomagnetic storm = atmosphere expanded = more drag.
+    Falls back to DEFAULT_KP if NOAA is unreachable.
+    """
     try:
         url = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
         response = requests.get(url, timeout=5)
@@ -66,20 +65,11 @@ def get_kp_index_with_status():
             latest_row = data[-1]   # last row = most recent
             kp = float(latest_row[1])
             print(f"[NOAA] Live Kp index: {kp}")
-            return kp, True
-        return DEFAULT_KP, False
+            return kp
+        return DEFAULT_KP
     except Exception as e:
         print(f"[NOAA] Could not fetch Kp (using default {DEFAULT_KP}): {e}")
-        return DEFAULT_KP, False
-
-
-def get_kp_index():
-    """
-    Returns the latest Kp index (0-9 scale) from NOAA.
-    High Kp = geomagnetic storm = atmosphere expanded = more drag.
-    Falls back to DEFAULT_KP if NOAA is unreachable.
-    """
-    return get_kp_index_with_status()[0]
+        return DEFAULT_KP
 
 
 # --- PART 3: Get everything at once ---
@@ -89,9 +79,8 @@ def get_space_weather():
     Returns a dictionary with both solar weather values and
     a human-readable activity level description.
     """
-    f107, f107_live = get_solar_flux_with_status()
-    kp,   kp_live   = get_kp_index_with_status()
-    live = f107_live and kp_live
+    f107 = get_solar_flux()
+    kp   = get_kp_index()
 
     # Classify activity level
     if f107 >= 200 or kp >= 5:
@@ -105,9 +94,7 @@ def get_space_weather():
         "f107":           f107,
         "kp_index":       kp,
         "activity_level": activity,
-        "live":           live,
-        "source":         ("NOAA Space Weather Prediction Center (live)" if live
-                           else "Default values (NOAA could not be reached)")
+        "source":         "NOAA Space Weather Prediction Center"
     }
 
 

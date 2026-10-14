@@ -60,19 +60,20 @@ The app tries live data first and falls back to safe defaults, so it keeps worki
 
 | Data | Source | If it cannot be reached |
 |---|---|---|
-| Solar flux (F10.7) and Kp index | NOAA SWPC | Defaults of F10.7 = 150 and Kp = 3 are used. The dashboard banner says "default values" instead of "live". |
+| Solar flux (F10.7) and Kp index for the dashboard banner | NOAA SWPC | Defaults of F10.7 = 150 and Kp = 3 are shown. The banner is still labeled "Live Space Weather" in this case. |
+| Solar flux for the decay model | NOAA SWPC | A fixed value of F10.7 = 100 is used when the flux cannot be read. This is the case on the hosted demo (see "Orbital decay"). |
 | Orbit catalogs for Conjunctions | Celestrak | A saved snapshot is used (`tle_visual.tle`, the "visual" group, 156 objects). The result panel shows which source was used and the snapshot's date. Some cloud hosts are blocked by Celestrak, so this fallback matters for hosted use. |
 | NORAD ID lookup in the Analyzer | Celestrak | The lookup fails with an error. Enter altitude and inclination manually instead. |
 
 ## Example: analyzing the Hubble Space Telescope
 
-Input: NORAD ID 20580 (about 540 km, 28.5°), mass 11,110 kg, area 13 m², 5-year mission, default solar flux (F10.7 = 150).
+Input: NORAD ID 20580 (about 540 km, 28.5°), mass 11,110 kg, area 13 m², 5-year mission, at the calibration solar flux (F10.7 = 150).
 
 - **Catastrophic collision probability:** about 0.43% over 5 years, which is **Moderate** risk
 - **Natural decay time:** about 34 years, so it **fails the 25-year guideline** and would need an active deorbit
 - **Disposal delta-V:** about 197 m/s to lower the orbit to 200 km, which takes about 770 kg of propellant at Isp 300 s
 
-The decay time shifts with solar activity, because a more active Sun makes the upper atmosphere denser and speeds up decay. At F10.7 = 100, the same satellite shows about 38.6 years.
+The decay time shifts with solar activity, because a more active Sun makes the upper atmosphere denser and speeds up decay. The hosted demo currently uses F10.7 = 100, so it shows about 38.6 years for the same satellite instead of 34.
 
 ## Risk levels
 
@@ -92,7 +93,7 @@ NASA's guideline is a catastrophic probability under 0.1% (1 in 1,000), and the 
 Debris is not spread evenly: it is densest near 850 km. The model uses a Gaussian peak at 850 km (width 400 km) and an inclination factor `1 + 0.5·|sin(i)|`, computed separately for small, medium, and large debris. Expected impacts equal flux × cross-section area × mission years, and the probability of at least one hit follows the Poisson formula `P = 1 - e^(-λ)`. The catastrophic probability combines medium and large impacts: `P_med + P_large - P_med·P_large`.
 
 ### Orbital decay (`calculations.py`, `solar_weather.py`)
-Satellites slowly fall because of drag from the thin upper atmosphere. Decay time depends on altitude, area-to-mass ratio, and solar activity. The drag coefficient is interpolated by altitude between anchor points. Four anchors (255, 380, 560, and 585 km) were tuned on real satellites; the others (150, 700, 800, 900, and 2,000 km) are assumed values. The result is scaled by the solar flux: `1.65 × (1 + (F10.7 − 150) / 400)`, so F10.7 = 150 is the calibration point. The app uses the current F10.7 from NOAA when it can be reached, and 150 otherwise.
+Satellites slowly fall because of drag from the thin upper atmosphere. Decay time depends on altitude, area-to-mass ratio, and solar activity. The drag coefficient is interpolated by altitude between anchor points. Four anchors (255, 380, 560, and 585 km) were tuned on real satellites; the others (150, 700, 800, 900, and 2,000 km) are assumed values. The result is scaled by the solar flux: `1.65 × (1 + (F10.7 − 150) / 400)`, so F10.7 = 150 is the calibration point. The decay model has its own solar-flux fetcher (in `calculations.py`) that falls back to 100 when the NOAA data cannot be read. The hosted demo uses 100, so its decay predictions run a little long compared with the 150 calibration point. Using one flux source for both the decay model and the dashboard (`solar_weather.py`) is on the 2.0 list.
 
 ### Disposal delta-V and fuel
 Delta-V for disposal comes from a **Hohmann transfer** down to 200 km using the vis-viva equation `v = sqrt(μ(2/r - 1/a))`, with a 1.8% margin. Fuel comes from the **Tsiolkovsky rocket equation** `m_fuel = m(e^(Δv/(Isp·g0)) - 1)`, using Isp 300 s for disposal.
@@ -124,7 +125,7 @@ Green is below 40, orange is 40 to 69, and red is 70 or more.
 
 ## Validation
 
-The decay model was checked against satellites whose reentry times are known, using the default solar flux (F10.7 = 150):
+The decay model was checked against satellites whose reentry times are known, at the calibration solar flux (F10.7 = 150):
 
 | Satellite | Predicted (yr) | Actual (yr) | Error |
 |---|---|---|---|
@@ -135,7 +136,7 @@ The decay model was checked against satellites whose reentry times are known, us
 
 **Honest note:** the drag coefficients were tuned using these same four satellites, so this is a calibration check, not an independent test. It only covers altitudes from about 255 to 585 km. Envisat (790 km), which was not used for tuning, is predicted to last far longer than the others (about 157 years), as expected for its altitude, but there is no reentry date to compare against.
 
-**Solar activity matters.** The Validation tab runs the same model with the current solar flux, so its errors depend on the day's F10.7. For example, at F10.7 = 100 (a quiet-Sun day) the same four predictions are 13 to 14% high (UARS 11.4 vs 10.0 yr, ROSAT 11.9 vs 10.5, Tiangong-1 7.4 vs 6.5, GOCE 4.9 vs 4.3). Testing on satellites not used for tuning is the next step.
+**What the hosted demo shows.** The Validation tab runs the same model with F10.7 = 100, so it reports an average error of about 13.8% (UARS 11.4 vs 10.0 yr, ROSAT 11.9 vs 10.5, Tiangong-1 7.4 vs 6.5, GOCE 4.9 vs 4.3), still within 20% for each satellite. At the calibration flux of 150 the errors are under 1%, as in the table above. Testing on satellites not used for tuning is the next step.
 
 ## Tech stack
 
@@ -172,6 +173,7 @@ The decay model was checked against satellites whose reentry times are known, us
 - Maneuver and Kessler results come from simplified models intended to show the idea, not to replace operational tools.
 - The Analyzer limits input to mass up to 50,000 kg, area up to 1,000 m², altitude 150 to 2,000 km, and mission length up to 50 years. The Kessler and Maneuver tabs have presets (such as the ISS) that exceed the Analyzer's area limit.
 - Live features need Celestrak and NOAA to be reachable. See "Data sources and fallbacks" for what happens otherwise.
+- The decay model uses a fixed solar-flux default of 100 on the hosted demo, and the dashboard banner is labeled "Live Space Weather" even when it shows default values.
 - There are no automated tests yet.
 
 ## Ideas for 2.0
@@ -180,6 +182,7 @@ The decay model was checked against satellites whose reentry times are known, us
 - Covariance-based collision probability for conjunctions
 - Feed a detected conjunction straight into the maneuver optimizer
 - Alerts for high-risk events
+- Use one solar-flux source for the decay model and the dashboard, and label default values clearly
 - Automated tests
 
 ## Credits
