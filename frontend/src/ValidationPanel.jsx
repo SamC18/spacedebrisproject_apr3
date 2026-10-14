@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://spacedebrisproject-apr3.onrender.com';
 
 const HISTORICAL_SATELLITES = [
   { name: "UARS", fullName: "Upper Atmosphere Research Satellite", agency: "NASA", altitude_km: 585, inclination: 57.0, mass: 5900, area: 20.0, actual_years: 10.0, actual_reentry: 2011, measured: 2001, description: "NASA climate research satellite" },
@@ -21,7 +21,7 @@ function gradeError(errorPct) {
 export default function ValidationPanel() {
   const [results,  setResults]  = useState(null);
   const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState(null);
+  const [, setError] = useState(null);
   const [progress, setProgress] = useState(0);
 
   const runValidation = async () => {
@@ -35,7 +35,7 @@ export default function ValidationPanel() {
         const predicted = res.data.disposal.natural_decay_years;
         const errorPct  = sat.actual_years !== null ? Math.abs(predicted - sat.actual_years) / sat.actual_years * 100 : null;
         rows.push({ ...sat, predicted, errorPct });
-      } catch (e) { rows.push({ ...sat, predicted: null, errorPct: null, fetchError: true }); }
+      } catch { rows.push({ ...sat, predicted: null, errorPct: null, fetchError: true }); }
     }
     setResults(rows); setLoading(false); setProgress(0);
   };
@@ -118,7 +118,7 @@ export default function ValidationPanel() {
       {results && (
         <div style={card}>
           <h3 style={{ color: '#fff', margin: '0 0 10px', fontSize: 15 }}>How this works</h3>
-          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0, lineHeight: 1.7 }}>Our model uses altitude-dependent atmospheric drag coefficients calibrated to live solar activity (F10.7 from NOAA SWPC). For each satellite we call our /v3/analyze API with orbital parameters from a known measurement date, then compare predicted decay against the actual reentry year. Envisat remains in orbit — our model correctly predicts a very long lifetime at 790 km altitude.</p>
+          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0, lineHeight: 1.7 }}>Our model uses altitude-dependent atmospheric drag coefficients calibrated at a solar-maximum F10.7 of 150, scaled by the current F10.7 from NOAA SWPC when it can be reached. For each satellite we call our /v3/analyze API with orbital parameters from a known measurement date, then compare predicted decay against the actual reentry year. Envisat remains in orbit — our model correctly predicts a very long lifetime at 790 km altitude.</p>
         </div>
       )}
 

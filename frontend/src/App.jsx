@@ -6,7 +6,7 @@ import ManeuverPanel from './ManeuverPanel.jsx';
 import KesslerPanel from './KesslerPanel.jsx';
 import ValidationPanel from './ValidationPanel.jsx';
 
-const API_BASE = 'https://spacedebrisproject-apr3.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://spacedebrisproject-apr3.onrender.com';
 
 function Analyzer() {
   const [form, setForm] = useState({
@@ -288,7 +288,7 @@ function Dashboard() {
         <div>
           <div style={{ background: '#fef3c7', border: '1px solid #f59e0b',
                         borderRadius: 10, padding: 12, marginBottom: 20, fontSize: 13 }}>
-            <strong>Live Space Weather (NOAA)</strong> -
+            <strong>{data.space_weather.live === false ? 'Space Weather (default values - NOAA unreachable)' : 'Live Space Weather (NOAA)'}</strong> -
             F10.7: {data.space_weather.f107} | Kp: {data.space_weather.kp_index} | {data.space_weather.activity_level}
           </div>
           {data.satellites.map((sat, i) => (
