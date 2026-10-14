@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 import traceback
+import math
 from calculations import (RiskCalculator, validate_inputs,
                            run_monte_carlo, fetch_tle_params)
 
@@ -32,7 +33,9 @@ class SatelliteInput(BaseModel):
 def root():
     return {"service": "Satellite Debris Risk Analyzer", "version": "4.0",
             "endpoints": ["/health", "/v2/analyze", "/v3/analyze",
-                          "/v4/monte_carlo", "/v4/tle/{norad_id}", "/docs"]}
+                          "/v4/monte_carlo", "/v4/tle/{norad_id}", "/dashboard",
+                          "/conjunctions", "/conjunction-catalogs", "/maneuver",
+                          "/kessler", "/docs"]}
 
 
 @app.get("/health")
@@ -177,6 +180,18 @@ def get_tle(norad_id: int):
 
 
 
+def _num(payload: dict, key: str, default, positive: bool = False) -> float:
+    """Read a numeric field from a JSON payload; bad input becomes a clear 400, not a 500."""
+    try:
+        value = float(payload.get(key, default))
+    except (TypeError, ValueError):
+        raise HTTPException(400, f"'{key}' must be a number")
+    if not math.isfinite(value) or (positive and value <= 0):
+        raise HTTPException(400, f"'{key}' must be a positive number" if positive
+                            else f"'{key}' must be a finite number")
+    return value
+
+
 @app.get("/dashboard")
 def dashboard_endpoint():
     return get_dashboard_data()
@@ -185,11 +200,11 @@ def dashboard_endpoint():
 def kessler_endpoint(payload: dict):
     from calculations import RiskCalculator
     calc = RiskCalculator(
-        mass          = float(payload.get("mass_kg", 500)),
-        area          = float(payload.get("area_m2", 5)),
-        altitude      = float(payload.get("altitude_km", 550)),
-        inclination   = float(payload.get("inclination_deg", 53)),
-        mission_years = float(payload.get("mission_years", 5))
+        mass          = _num(payload, "mass_kg", 500, positive=True),
+        area          = _num(payload, "area_m2", 5, positive=True),
+        altitude      = _num(payload, "altitude_km", 550, positive=True),
+        inclination   = _num(payload, "inclination_deg", 53),
+        mission_years = _num(payload, "mission_years", 5, positive=True)
     )
     return run_cascade_simulation(calc)
 
@@ -237,14 +252,14 @@ def catalog_list():
 @app.post("/maneuver")
 def maneuver_endpoint(payload: dict):
     return optimize_avoidance_maneuver(
-        altitude_km        = float(payload.get("altitude_km", 550)),
-        inclination_deg    = float(payload.get("inclination_deg", 53)),
-        spacecraft_mass_kg = float(payload.get("spacecraft_mass_kg", 500)),
-        miss_distance_km   = float(payload.get("miss_distance_km", 2.5)),
-        minutes_to_tca     = float(payload.get("minutes_to_tca", 90)),
+        altitude_km        = _num(payload, "altitude_km", 550, positive=True),
+        inclination_deg    = _num(payload, "inclination_deg", 53),
+        spacecraft_mass_kg = _num(payload, "spacecraft_mass_kg", 500, positive=True),
+        miss_distance_km   = _num(payload, "miss_distance_km", 2.5),
+        minutes_to_tca     = _num(payload, "minutes_to_tca", 90),
         object_name        = str(payload.get("object_name", "Unknown")),
-        target_miss_km     = float(payload.get("target_miss_km", 5.0)),
-        isp_s              = float(payload.get("isp_s", 220)),
+        target_miss_km     = _num(payload, "target_miss_km", 5.0, positive=True),
+        isp_s              = _num(payload, "isp_s", 220, positive=True),
     )
 
 

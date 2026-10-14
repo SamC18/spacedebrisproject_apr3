@@ -6,6 +6,7 @@ from io import BytesIO
 import base64
 import requests
 import scipy.stats as stats
+from solar_weather import get_solar_flux   # single source for F10.7 (fallback: 150)
 
 R_EARTH_KM = 6378.137
 MU_EARTH    = 398600.4418
@@ -35,10 +36,7 @@ class RiskCalculator:
     def predict_decay_years(self):
         if self.area_to_mass <= 0:
             return 999
-        try:
-            f107 = get_solar_flux()
-        except Exception:
-            f107 = 150  # Solar Maximum default (2026)
+        f107 = get_solar_flux()   # live NOAA value, or 150 (solar-max default) if NOAA is unreachable
 
         # Solar activity scaling — calibrated so F10.7=150 (solar max)
         # gives solar_factor=1.65, matching real historical reentries
@@ -178,24 +176,6 @@ def validate_inputs(mass, area, altitude, inclination, mission_years):
     if mass > 0 and area > 0 and area / mass > 10:
         errors.append("Warning: Very high A/m ratio (>10 m²/kg) — check inputs")
     return errors
-
-
-def get_solar_flux():
-    """Fetch latest F10.7 from NOAA. Returns 100 on any error."""
-    try:
-        url = "https://services.swpc.noaa.gov/text/daily-solar-data.txt"
-        response = requests.get(url, timeout=5)
-        if response.status_code != 200:
-            return 100
-        for line in reversed(response.text.split('\n')):
-            line = line.strip()
-            if line and not line.startswith(':') and not line.startswith('#'):
-                parts = line.split()
-                if len(parts) > 5:
-                    return float(parts[5])
-    except Exception:
-        pass
-    return 100
 
 
 def fetch_tle_params(norad_id):
