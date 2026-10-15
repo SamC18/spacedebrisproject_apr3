@@ -4,6 +4,8 @@ A full-stack web app that estimates collision and reentry risk for satellites, f
 
 **Stack:** Python (FastAPI, NumPy, SciPy, sgp4, Matplotlib) · React 19 + Vite · data from Celestrak and NOAA SWPC
 
+**Live demo:** https://spacedebrisproject-apr3.onrender.com (if it has been idle, the first load may take a minute to wake up)
+
 ## The problem
 
 Tens of thousands of tracked objects orbit Earth, and even a small fragment moving at orbital speed can destroy a satellite. Every collision makes more fragments, which makes the next collision more likely (the *Kessler effect*). Operators need quick answers to four questions:
