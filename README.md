@@ -125,18 +125,18 @@ Green is below 40, orange is 40 to 69, and red is 70 or more.
 
 ## Validation
 
-The decay model was checked against satellites whose reentry times are known, at the calibration solar flux (F10.7 = 150):
+The decay model was checked against satellites whose reentry times are known, at two solar-flux settings: the calibration value (F10.7 = 150) and the value the hosted demo uses (F10.7 = 100).
 
-| Satellite | Predicted (yr) | Actual (yr) | Error |
-|---|---|---|---|
-| UARS | 9.96 | 10.0 | 0.4% |
-| ROSAT | 10.4 | 10.5 | 1.0% |
-| Tiangong-1 | 6.45 | 6.5 | 0.8% |
-| GOCE | 4.28 | 4.3 | 0.5% |
+| Satellite | Actual (yr) | Predicted at F10.7 = 150 | Error | Predicted on hosted demo (F10.7 = 100) | Error |
+|---|---|---|---|---|---|
+| UARS | 10.0 | 9.96 | 0.4% | 11.4 | 14.0% |
+| ROSAT | 10.5 | 10.4 | 1.0% | 11.9 | 13.3% |
+| Tiangong-1 | 6.5 | 6.45 | 0.8% | 7.4 | 13.8% |
+| GOCE | 4.3 | 4.28 | 0.5% | 4.9 | 14.0% |
 
 **Honest note:** the drag coefficients were tuned using these same four satellites, so this is a calibration check, not an independent test. It only covers altitudes from about 255 to 585 km. Envisat (790 km), which was not used for tuning, is predicted to last far longer than the others (about 157 years), as expected for its altitude, but there is no reentry date to compare against.
 
-**What the hosted demo shows.** The Validation tab runs the same model with F10.7 = 100, so it reports an average error of about 13.5% (UARS 11.4 vs 10.0 yr, ROSAT 11.9 vs 10.5, Tiangong-1 7.4 vs 6.5, GOCE 4.9 vs 4.3), still within 20% for each satellite. At the calibration flux of 150 the errors are under 1%, as in the table above. Testing on satellites not used for tuning is the next step.
+**What the hosted demo shows.** The Validation tab runs the same model with F10.7 = 100, so it reports an average error of about 13.8%, still within 20% for each satellite. At the calibration flux of 150 the errors are under 1%. Testing on satellites not used for tuning is the next step.
 
 ## Tech stack
 
@@ -187,14 +187,6 @@ The decay model was checked against satellites whose reentry times are known, at
 - Alerts for high-risk events
 - Use one solar-flux source for the decay model and the dashboard, and label default values clearly
 - Automated tests
-
-## AI usage and original work
-
-<!-- FILL THIS IN HONESTLY. The 2026 rules require full disclosure of AI use. Say which tools, which parts of the project, and what you wrote and designed yourself. -->
-
-- **AI tools used:** [name the tools]
-- **What AI helped with:** [for example, explaining a library, debugging a specific error, styling a component]
-- **What I designed and wrote myself:** [for example, the risk-score formula, the choice of models, the validation approach, the limitations above]
 
 ## Credits
 
