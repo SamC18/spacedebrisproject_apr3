@@ -138,7 +138,7 @@ The decay model was checked against satellites whose reentry times are known, at
 
 At F10.7 = 150 the average error is about 0.6%. At F10.7 = 126 it is about 6%. The Validation tab rounds predictions to one decimal before computing error, so its percentages can differ by a few tenths, and the live flux changes daily, so the tab's numbers will drift slightly. (A version of this tab recorded earlier ran on the fallback flux of 100 and showed an average error of about 13.8%.)
 
-**Honest note:** the drag coefficients were tuned using these same four satellites, so this is a calibration check, not an independent test. It only covers altitudes from about 255 to 585 km. Envisat (790 km), which was not used for tuning, is predicted to last far longer than the others (about 157 years), as expected for its altitude, but there is no reentry date to compare against.
+**Honest note:** the drag coefficients were tuned using these same four satellites, so this is a calibration check, not an independent test. It only covers altitudes from about 255 to 585 km. Envisat (790 km), which was not used for tuning, is predicted to last far longer than the others (about 150 years), as expected for its altitude, but there is no reentry date to compare against.
 
 The 6% to 14% errors at other flux values come from the solar-flux scaling, which is simplified. Testing on satellites not used for tuning is the next step.
 
