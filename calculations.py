@@ -183,16 +183,13 @@ def validate_inputs(mass, area, altitude, inclination, mission_years):
 def get_solar_flux():
     """Fetch latest F10.7 from NOAA. Returns 100 on any error."""
     try:
-        url = "https://services.swpc.noaa.gov/text/daily-solar-data.txt"
+        url = "https://services.swpc.noaa.gov/products/summary/10cm-flux.json"
         response = requests.get(url, timeout=5)
         if response.status_code != 200:
             return 100
-        for line in reversed(response.text.split('\n')):
-            line = line.strip()
-            if line and not line.startswith(':') and not line.startswith('#'):
-                parts = line.split()
-                if len(parts) > 5:
-                    return float(parts[5])
+        flux = float(response.json()[0]["flux"])
+        if flux > 0:
+            return flux
     except Exception:
         pass
     return 100
