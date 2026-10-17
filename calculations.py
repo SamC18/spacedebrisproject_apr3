@@ -187,7 +187,10 @@ def get_solar_flux():
         response = requests.get(url, timeout=5)
         if response.status_code != 200:
             return 100
-        flux = float(response.json()[0]["flux"])
+        data = response.json()
+        if isinstance(data, list):      # tolerate a list-style response too
+            data = data[0]
+        flux = float(data.get("Flux", data.get("flux")))
         if flux > 0:
             return flux
     except Exception:
