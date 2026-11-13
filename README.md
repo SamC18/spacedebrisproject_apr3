@@ -1,6 +1,6 @@
 # Satellite Debris Risk Analyzer
 
-A full-stack web app that estimates collision and reentry risk for satellites, finds close approaches with other orbiting objects, and recommends the smallest burn needed to avoid one. Built for the **2026 Congressional App Challenge**.
+A full-stack web app that estimates collision and reentry risk for satellites, finds close approaches with other orbiting objects, and recommends the smallest burn needed to avoid one.
 
 **Stack:** Python (FastAPI, NumPy, SciPy, sgp4, Matplotlib) · React 19 + Vite · data from Celestrak and NOAA SWPC
 
